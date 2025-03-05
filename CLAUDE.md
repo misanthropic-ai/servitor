@@ -82,8 +82,39 @@ Re-CC is a Python reimplementation of the Claude Code CLI. This project creates 
 - Git repository awareness and context gathering
 - Fuzzy command matching for intuitive user interaction
 
+## Conversation & Planning System
+
+The Re-CC application implements a hybrid planning system that combines LLM capabilities with structured state management:
+
+### Conversation Management
+- Maintains conversation history buffer to provide context for the LLM
+- Persists conversations across sessions using secure local storage
+- Implements the `/compact` command to summarize long conversations
+- Tracks message types (user input, assistant response, system messages)
+
+### Environment Context
+- Automatically gathers relevant context from the codebase
+- Analyzes git repository information for project understanding
+- Builds language-specific context based on file types
+- Maintains project-specific knowledge across sessions
+
+### Hybrid Planning Approach
+- **LLM-Driven Planning**: Relies on the LLM to break down complex tasks
+- **Structured State Tracking**: Maintains a light task state in application code
+- **Plan Verification**: Validates plan steps against available tools
+- **Adaptive Context**: Dynamically adjusts context based on the task
+
+### Key Components
+- **ConversationBuffer**: Manages and persists chat history
+- **ContextGatherer**: Collects relevant environment information
+- **TaskTracker**: Maintains the state of multi-step tasks
+- **PlanManager**: Coordinates between user input and LLM planning
+
 ## Next Steps
-- Implement unit and integration tests
+- Implement conversation history buffer and persistence
+- Build the hybrid planning system with task tracking
+- Create environment context gathering for improved planning
+- Implement the `/compact` command with summarization
 - Set up CI/CD pipeline
 - Create packaging and distribution for PyPI
 - Build platform-specific packages (pip, conda)

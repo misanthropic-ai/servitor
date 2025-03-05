@@ -30,6 +30,16 @@ Implements all features from the original Claude Code CLI, including:
 - **Tool Management**: Enable/disable features as needed
 - **Conversation Management**: Compact and continue conversations
 
+### Hybrid Planning System
+
+Our enhanced planning approach combines LLM capabilities with structured application logic:
+
+- **Conversation Memory**: Persistent history with context management
+- **Environment Context**: Automatic code and repository analysis
+- **Task Tracking**: Lightweight state management for complex tasks
+- **Plan Validation**: Verifies LLM plans against available tools
+- **Adaptive Prompting**: Dynamically adjusts prompts based on tasks
+
 ## Python CLI Implementation Plan
 
 This document outlines the tasks necessary to create a Python version of the Claude Code CLI.
@@ -68,18 +78,26 @@ This document outlines the tasks necessary to create a Python version of the Cla
    - [x] Implement command execution features with streaming output
    - [x] Create codebase understanding with context-aware commands
 
-6. **Testing & Documentation**
+6. **Conversation & Planning System**
+   - [ ] Implement conversation history buffer with persistence
+   - [ ] Create environment context gathering for improved planning
+   - [ ] Build hybrid LLM planning system with light structure
+   - [ ] Add task tracking with state management
+   - [ ] Implement the `/compact` command with summarization
+   - [ ] Create session management for continued conversations
+
+7. **Testing & Documentation**
    - [ ] Write unit tests for core components
    - [ ] Create integration tests for API interaction
    - [x] Add docstrings to all modules and functions
    - [x] Create usage examples with command interface
 
-7. **Security & Privacy**
+8. **Security & Privacy**
    - [x] Implement secure API key storage with keyring
    - [x] Create configuration management with YAML
    - [x] Build privacy safeguards for API keys
 
-8. **Release & Deployment**
+9. **Release & Deployment**
    - [ ] Set up CI/CD pipeline
    - [x] Create installation instructions
    - [ ] Build platform-specific packages (pip, conda)
