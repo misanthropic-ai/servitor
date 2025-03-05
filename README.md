@@ -16,7 +16,19 @@ Re-CC is a Python reimplementation of the Claude Code CLI. It creates a terminal
 - **Python-Based**: Built with Python 3.9+ using modern async patterns
 - **Package Management**: Uses UV for dependency management
 - **TUI Configuration**: Terminal user interface for managing API keys and provider settings
-- **Enhanced Features**: Includes additional capabilities beyond the original Node.js version
+
+## Feature Set
+
+Implements all features from the original Claude Code CLI, including:
+
+- **File Operations**: Editing, viewing, creating files with word-level diffs
+- **Code Search**: Pattern, function, and class finding with language awareness
+- **Command Execution**: Run commands with streaming output
+- **Git Integration**: Repository awareness and context gathering
+- **Slash Commands**: Full command system with fuzzy matching
+  - `/help`, `/version`, `/bug`, `/compact`, `/tools`, etc.
+- **Tool Management**: Enable/disable features as needed
+- **Conversation Management**: Compact and continue conversations
 
 ## Python CLI Implementation Plan
 
