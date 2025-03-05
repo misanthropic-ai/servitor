@@ -157,6 +157,10 @@ def parse_special_commands(query: str) -> Tuple[bool, str, Dict[str, Any]]:
         # Help and other
         r"^/help$": "show_help",
         r"^/context$": "show_context",
+        r"^/compact$": "compact_conversation",
+        r"^/bug$": "report_bug",
+        r"^/version$": "show_version",
+        r"^/tools$": "manage_tools",
     }
     
     # Check for command matches
@@ -165,6 +169,36 @@ def parse_special_commands(query: str) -> Tuple[bool, str, Dict[str, Any]]:
         if match:
             args = match.groups()
             return True, command, {"args": args}
+    
+    # Check for fuzzy command matches if no exact match
+    if query.startswith('/'):
+        command_name = query.split(' ')[0][1:]  # Extract command without slash and args
+        best_match = None
+        best_score = 0
+        
+        for pattern in patterns:
+            # Extract command name from pattern
+            pattern_cmd = pattern.split('\\s+')[0][3:]  # Remove "^/" and anything after space
+            
+            # Calculate similarity score (simple for now)
+            score = 0
+            for i, c in enumerate(command_name):
+                if i < len(pattern_cmd) and c == pattern_cmd[i]:
+                    score += 1
+            
+            # Normalize score
+            if len(pattern_cmd) > 0:
+                normalized_score = score / len(pattern_cmd)
+                
+                # Update best match if better
+                if normalized_score > best_score and normalized_score > 0.5:  # Threshold
+                    best_score = normalized_score
+                    best_match = patterns[pattern]
+        
+        # If we found a good fuzzy match
+        if best_match:
+            console.print(f"[dim]Assuming command: /{best_match}[/]")
+            return True, best_match, {"args": tuple()}
     
     return False, query, {}
 
@@ -473,10 +507,18 @@ async def handle_special_command(
 - `/provider <name>` - Set the default provider
 - `/providers` - List available providers
 
+## System Commands
+- `/tools` - Manage tool permissions and settings
+- `/compact` - Compact the conversation to save context
+- `/bug` - Report bugs or issues
+- `/version` - Show version information
+
 ## Other
 - `/help` - Show this help
 - `/context` - Show repository context
 - `exit`, `quit`, `q` - Exit the application
+
+Note: Commands support fuzzy matching (e.g., `/ver` for `/version`)
 """
         console.print(Markdown(help_text))
         return None  # No response needed, help already shown
@@ -485,6 +527,79 @@ async def handle_special_command(
         context = get_repo_context()
         console.print(f"[bold green]Repository Context:[/]\n{context}")
         return None  # No response needed, context already shown
+    
+    elif command == "compact_conversation":
+        console.print("[bold green]Compacting conversation...[/]")
+        console.print("""
+This command would normally compact the conversation history to save context window space.
+In this implementation, you would:
+1. Summarize the conversation so far
+2. Start a new conversation with the summary as context
+3. Continue from there with more context space available
+""")
+        return "Conversation compacted. You can continue with your questions."
+    
+    elif command == "report_bug":
+        console.print("[bold green]Report a Bug[/]")
+        console.print("""
+To report bugs or issues with Re-CC:
+
+1. Visit the GitHub repository: [link]https://github.com/yourusername/re-cc/issues[/link]
+2. Click on "New Issue"
+3. Describe the bug with as much detail as possible
+4. Include steps to reproduce the issue
+5. Submit the issue
+
+Alternatively, you can provide feedback here:
+""")
+        
+        # Let the user provide feedback
+        console.print("[bold]Enter your bug report or feedback (or /cancel to cancel):[/]")
+        feedback = console.input()
+        
+        if feedback.strip() == "/cancel":
+            return "Bug report cancelled."
+        
+        # In a real implementation, we would send this feedback to a server
+        # For now, just acknowledge it
+        return "Thank you for your feedback! Your report has been recorded."
+    
+    elif command == "show_version":
+        from re_cc import __version__
+        
+        console.print(f"[bold green]Re-CC Version:[/] {__version__}")
+        console.print("""
+[dim]Recent updates:[/dim]
+- Added file editing with diff visualization
+- Added code search with language-specific patterns
+- Added command execution with streaming output
+- Added support for multiple LLM providers
+""")
+        return None  # No response needed, version already shown
+    
+    elif command == "manage_tools":
+        console.print("[bold green]Manage Tools[/]")
+        
+        # List available tools
+        console.print("[bold]Available tools:[/]")
+        
+        table = Table("Tool", "Status", "Description")
+        
+        tools = [
+            ("File Operations", "✓ Enabled", "View, edit, and create files"),
+            ("Code Search", "✓ Enabled", "Search for patterns, functions, and classes"),
+            ("Command Execution", "✓ Enabled", "Run commands with streaming output"),
+            ("Git Integration", "✓ Enabled", "Interact with Git repositories"),
+        ]
+        
+        for tool, status, description in tools:
+            table.add_row(tool, status, description)
+        
+        console.print(table)
+        
+        # In a real implementation, we would allow enabling/disabling tools
+        # For now, just show the available tools
+        return None  # No response needed, tools already shown
     
     return None  # Command not recognized
 

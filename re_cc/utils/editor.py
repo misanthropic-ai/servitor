@@ -125,31 +125,113 @@ def create_file(file_path: str, content: str) -> Tuple[bool, str]:
         return False, str(e)
 
 
-def show_diff(file_path: str, old_content: str, new_content: str) -> List[str]:
+def show_diff(file_path: str, old_content: str, new_content: str, word_level: bool = True) -> List[str]:
     """Show a diff between old and new content.
     
     Args:
         file_path: The path to the file
         old_content: The old content
         new_content: The new content
+        word_level: Whether to use word-level diff (True) or line-level (False)
         
     Returns:
         A list of diff lines
     """
-    # Split the content into lines
-    old_lines = old_content.splitlines()
-    new_lines = new_content.splitlines()
-    
-    # Generate the diff
-    diff = difflib.unified_diff(
-        old_lines,
-        new_lines,
-        fromfile=f"a/{file_path}",
-        tofile=f"b/{file_path}",
-        lineterm="",
-    )
-    
-    return list(diff)
+    if not word_level:
+        # Split the content into lines
+        old_lines = old_content.splitlines()
+        new_lines = new_content.splitlines()
+        
+        # Generate the diff
+        diff = difflib.unified_diff(
+            old_lines,
+            new_lines,
+            fromfile=f"a/{file_path}",
+            tofile=f"b/{file_path}",
+            lineterm="",
+        )
+        
+        return list(diff)
+    else:
+        # Word-level diff using difflib's SequenceMatcher
+        output = [
+            f"--- a/{file_path}",
+            f"+++ b/{file_path}",
+        ]
+        
+        # Split the content into lines
+        old_lines = old_content.splitlines()
+        new_lines = new_content.splitlines()
+        
+        # Determine line-level changes first
+        line_matcher = difflib.SequenceMatcher(None, old_lines, new_lines)
+        
+        # Process line-level changes
+        for op, i1, i2, j1, j2 in line_matcher.get_opcodes():
+            if op == 'equal':
+                # For unchanged blocks, just add the lines with context
+                context_lines = min(3, i2 - i1)  # Show up to 3 lines of context
+                for i in range(i1, i1 + context_lines):
+                    if i < i2:
+                        output.append(f" {old_lines[i]}")
+                
+                if i2 - i1 > 6:  # If more than 6 lines of context
+                    output.append("@@ ... skipping unchanged lines ... @@")
+                    
+                    # Show the last few lines of context
+                    for i in range(i2 - context_lines, i2):
+                        if i >= i1:
+                            output.append(f" {old_lines[i]}")
+            
+            elif op == 'replace':
+                # For replaced blocks, do word-level diff
+                for i, old_line in enumerate(old_lines[i1:i2]):
+                    for j, new_line in enumerate(new_lines[j1:j2]):
+                        if i == j:  # Only compare corresponding lines
+                            # Word-level diff for this line pair
+                            word_matcher = difflib.SequenceMatcher(
+                                None, 
+                                old_line.split(), 
+                                new_line.split()
+                            )
+                            
+                            old_formatted = []
+                            new_formatted = []
+                            
+                            # Process word-level changes
+                            for word_op, wi1, wi2, wj1, wj2 in word_matcher.get_opcodes():
+                                old_words = old_line.split()[wi1:wi2]
+                                new_words = new_line.split()[wj1:wj2]
+                                
+                                if word_op == 'equal':
+                                    old_formatted.extend(old_words)
+                                    new_formatted.extend(new_words)
+                                
+                                elif word_op == 'delete':
+                                    old_formatted.extend([f"[-{w}-]" for w in old_words])
+                                
+                                elif word_op == 'insert':
+                                    new_formatted.extend([f"[+{w}+]" for w in new_words])
+                                
+                                elif word_op == 'replace':
+                                    old_formatted.extend([f"[-{w}-]" for w in old_words])
+                                    new_formatted.extend([f"[+{w}+]" for w in new_words])
+                            
+                            # Add the formatted lines
+                            output.append(f"- {' '.join(old_formatted)}")
+                            output.append(f"+ {' '.join(new_formatted)}")
+            
+            elif op == 'delete':
+                # Lines deleted
+                for line in old_lines[i1:i2]:
+                    output.append(f"- {line}")
+            
+            elif op == 'insert':
+                # Lines inserted
+                for line in new_lines[j1:j2]:
+                    output.append(f"+ {line}")
+        
+        return output
 
 
 def apply_patch(file_path: str, patch: List[str]) -> Tuple[bool, str]:
