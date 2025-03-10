@@ -1,21 +1,39 @@
 """Main entry point for the Re-CC application."""
 
 import sys
+import os
+import logging
 import typer
 from typing import Optional
 from rich.console import Console
+from dotenv import load_dotenv
 
 from re_cc import __version__
 from re_cc.cli.app import app as cli_app
 from re_cc.config.manager import ConfigManager
 from re_cc.terminal.tui import launch_tui
 
+# Load environment variables from .env file
+load_dotenv()
+
+# Setup logging
+if os.environ.get("DEBUG", "").lower() in ("1", "true", "yes"):
+    logging.basicConfig(
+        level=logging.DEBUG,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        handlers=[logging.StreamHandler()]
+    )
+    logging.debug("Debug logging enabled")
+else:
+    logging.basicConfig(level=logging.INFO)
+
 console = Console()
 app = typer.Typer(help="Re-CC: Multi-LLM terminal-based coding assistant")
 
 
-@app.command()
-def main(
+@app.callback(invoke_without_command=True)
+def callback(
+    ctx: typer.Context,
     version: Optional[bool] = typer.Option(
         False, "--version", "-v", help="Display version information and exit"
     ),
@@ -24,6 +42,10 @@ def main(
     ),
 ) -> None:
     """Re-CC: Multi-LLM terminal-based coding assistant."""
+    # Only run the default action if no subcommand is provided
+    if ctx.invoked_subcommand is not None:
+        return
+        
     if version:
         console.print(f"Re-CC version: [bold green]{__version__}[/]")
         sys.exit(0)
@@ -33,8 +55,17 @@ def main(
         launch_tui()
         sys.exit(0)
     
-    # Launch the main CLI app
-    cli_app()
+    # Launch the main CLI app (async) by default when no subcommand is provided
+    import asyncio
+    asyncio.run(cli_app())
+
+
+@app.command()
+def main() -> None:
+    """Re-CC: Multi-LLM terminal-based coding assistant."""
+    # Launch the main CLI app (async)
+    import asyncio
+    asyncio.run(cli_app())
 
 
 @app.command()

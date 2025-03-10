@@ -29,7 +29,7 @@ from re_cc.utils.editor import edit_file, create_file, show_diff
 from re_cc.utils.command import execute_command
 from re_cc.utils.task import task_manager, TaskStatus
 from re_cc.utils.mcp import mcp_manager
-from re_cc.utils.agent import dispatch_agent
+# Removed dispatch_agent import to break circular import
 from re_cc.utils.conversation import conversation_buffer
 
 
@@ -84,8 +84,10 @@ async def process_query(
     if context:
         full_prompt = f"{context}\n\n{query}"
     
-    # Get available tools from the registry
-    from re_cc.tools import tool_registry
+    # Ensure all tools are loaded and get available tools from the registry
+    from re_cc.tools import tool_registry, load_all_tools
+    # Load all tools explicitly here to avoid circular imports
+    load_all_tools() 
     available_tools = tool_registry.get_tool_names()
     
     with console.status("[bold green]Thinking...[/]"):
@@ -100,27 +102,65 @@ async def process_query(
             
             # Check if the response includes tool calls
             if response.tool_calls:
-                # Instead of processing tools directly here, use our improved Agent class
-                # which supports multi-round tool calling and better state management
-                from re_cc.utils.agent import Agent
+                # Handle tool calls directly in process_query
+                console.print("[dim]Processing tool calls...[/]")
                 
-                # Create a new agent with the current provider
-                agent = Agent(provider_name=provider_name, system_prompt=system_prompt)
+                # Process tools
+                final_response_text = response.text
+                tool_calls_processed = 0
+                max_iterations = 5
                 
-                # Initialize conversation history if provided
-                if conversation_history:
-                    agent._conversation_history = conversation_history.copy()
-                
-                # Let the agent handle the full processing flow, including multiple rounds of tool calls
-                console.print("[dim]Using agent for tool processing...[/]")
-                
-                # Run the agent with the query and allow up to 5 iterations of tool calls
-                with console.status("[bold green]Processing tools...[/]"):
-                    final_response_text = await agent.run(query, max_iterations=5)
-                
-                # Update our conversation history with the agent's updated history
-                # to ensure we preserve the tool call context for future interactions
-                conversation_history = agent._conversation_history
+                # Process tools in multiple iterations if needed
+                while response.tool_calls and tool_calls_processed < max_iterations:
+                    # Process each tool call
+                    for tool_call in response.tool_calls:
+                        tool_name = tool_call.get("name")
+                        tool_params = tool_call.get("parameters", {})
+                        
+                        # Get the tool from registry
+                        tool = tool_registry.get_tool(tool_name)
+                        if not tool:
+                            console.print(f"[bold red]Unknown tool:[/] {tool_name}")
+                            continue
+                        
+                        # Execute the tool
+                        try:
+                            console.print(f"[dim]Executing tool:[/] {tool_name}")
+                            # Check if the handler is async
+                            if asyncio.iscoroutinefunction(tool.handler):
+                                result = await tool.handler(**tool_params)
+                            else:
+                                result = tool.handler(**tool_params)
+                            
+                            # Add tool result to conversation for context
+                            if conversation_history:
+                                conversation_history.append({
+                                    "role": "tool", 
+                                    "tool_name": tool_name,
+                                    "content": str(result)
+                                })
+                        except Exception as e:
+                            console.print(f"[bold red]Error executing {tool_name}:[/] {str(e)}")
+                            result = f"Error: {str(e)}"
+                    
+                    # Increment counter
+                    tool_calls_processed += 1
+                    
+                    # Stop if we've reached the limit
+                    if tool_calls_processed >= max_iterations:
+                        break
+                        
+                    # Generate a follow-up response based on tool results
+                    response = await provider.generate(
+                        prompt="Continue processing based on the tool results",
+                        system_prompt=system_prompt,
+                        context=context,
+                        tools=available_tools,
+                        conversation_history=conversation_history
+                    )
+                    
+                    # Update final response
+                    final_response_text = response.text
                 
                 # Create an LLMResponse object for consistent return handling
                 from re_cc.providers.base import LLMResponse
@@ -282,7 +322,11 @@ async def handle_special_command(
             
             # Execute the tool
             console.print(f"[bold green]Running {tool.user_facing_name or tool.name}...[/]")
-            result = tool.handler(**params)
+            # Check if handler is async
+            if asyncio.iscoroutinefunction(tool.handler):
+                result = await tool.handler(**params)
+            else:
+                result = tool.handler(**params)
             
             # Handle result based on success/failure
             if isinstance(result, dict) and "success" in result:
@@ -302,7 +346,7 @@ async def handle_special_command(
     return f"Unknown command: {command}"
 
 
-def app() -> None:
+async def app() -> None:
     """Run the main CLI application."""
     console.print(Panel.fit(
         "Welcome to [bold green]Re-CC[/], a terminal-based AI coding assistant",
@@ -342,7 +386,7 @@ def app() -> None:
     
     # Show help hints
     console.print("[dim]Type /help for available commands or just chat with the assistant[/]")
-    console.print("[dim]Use \! prefix for direct shell commands (e.g., \!ls, \!cat file.txt)[/]")
+    console.print("[dim]Use ! prefix for direct shell commands (e.g., !ls, !cat file.txt)[/]")
     console.print("[dim]Type /compact to summarize conversation history and save context space[/]")
     
     # Main interaction loop
@@ -351,12 +395,12 @@ def app() -> None:
             query = Prompt.ask("\n[bold blue]>[/]")
             
             if query.lower() in ("exit", "quit", "q"):
-                console.print("[dim]Goodbye\![/]")
+                console.print("[dim]Goodbye![/]")
                 break
             
-            # Check for \! prefix for direct bash commands
-            if query.startswith("\!"):
-                # Extract the bash command (remove the \! prefix)
+            # Check for ! prefix for direct bash commands
+            if query.startswith("!"):
+                # Extract the bash command (remove the ! prefix)
                 bash_cmd = query[1:].strip()
                 
                 if bash_cmd:

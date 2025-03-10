@@ -62,6 +62,7 @@ This document outlines the tasks necessary to create a Python version of the Cla
    - [x] Implement error handling framework
    - [x] Create provider abstraction layer
    - [x] Build event-based architecture for command handling
+   - [x] Fix main CLI entry point with default behavior
 
 3. **API Integration**
    - [x] Implement HTTP client for multiple LLM APIs (Anthropic, OpenAI, etc.)
@@ -138,6 +139,10 @@ uv pip install -e .
 # Install development dependencies
 uv pip install -e ".[dev]"
 
+# Copy and configure environment variables (optional)
+cp .env.example .env
+# Edit .env with your API keys and settings
+
 # Run the application and configure settings
 python -m re_cc
 
@@ -147,12 +152,28 @@ python -m re_cc config --provider openai --api-key your_openai_key
 python -m re_cc config --provider ollama --endpoint http://localhost:11434
 
 # Set custom endpoints (optional)
-python -m re_cc config --provider custom --endpoint https://your-custom-endpoint/v1 --api-key your_key --model your_model_name
+python -m re_cc config --provider custom --endpoint https://your-custom-endpoint.com/v1 --api-key your_key --model your_model_name
 
 # Use in your project
 cd /path/to/your/project
 python -m re_cc
 ```
+
+### Environment Variable Configuration
+
+Re-CC supports configuration via environment variables. You can set these in a `.env` file or directly in your environment:
+
+| Environment Variable | Description | Example |
+|---------------------|-------------|---------|
+| `OPENAI_API_KEY` | OpenAI API key | `sk-proj-xxxxxxxxxxxx` |
+| `OPENAI_API_BASE` | Custom OpenAI API endpoint | `https://api.example.com/v1` |
+| `ANTHROPIC_API_KEY` | Anthropic API key | `sk-ant-api03-xxxxxxxxxxxx` |
+| `OLLAMA_API_BASE` | Custom Ollama endpoint | `http://localhost:11434` |
+| `CUSTOM_API_BASE` | Custom provider API endpoint | `https://your-api.example.com/v1` |
+| `CUSTOM_API_KEY` | Custom provider API key | `your-api-key` |
+| `DEBUG` | Enable debug logging | `true` |
+
+The environment variables take precedence over the settings in the config file, allowing you to override configuration per environment without modifying the config file.
 
 ### Configuration Interface
 
@@ -169,6 +190,18 @@ Re-CC includes a built-in TUI (Terminal User Interface) for managing providers a
 Contributions are welcome! Check the issues page for current tasks or feature requests.
 
 ## Recent Changes
+
+### 2024-11-03
+- Fixed the CLI entry point for better user experience
+  - Improved main application flow to default to the CLI when no command is specified
+  - Implemented Typer callback with invoke_without_command to handle top-level options
+  - Updated command-line argument handling for version and config flags
+  - Ensured consistent user experience regardless of how the application is invoked
+- Added environment variable support
+  - Integrated python-dotenv for loading configuration from .env files
+  - Added support for API keys and endpoints from environment variables
+  - Implemented debug logging with DEBUG environment variable
+  - Created comprehensive documentation for environment variable usage
 
 ### 2024-10-07
 - Finalized the command system integration
@@ -236,6 +269,10 @@ Contributions are welcome! Check the issues page for current tasks or feature re
 - [x] Integrate planning system with CLI
   - Connect planning components to the main CLI flow
   - Implement proper task state tracking during multi-step operations
+- [x] Fix main CLI entry point
+  - Make application run properly when no command is specified
+  - Ensure consistent CLI behavior regardless of invocation method
+  - Properly handle command-line flags at top level
 
 ### Medium Priority
 - [x] Implement missing tools
@@ -252,6 +289,10 @@ Contributions are welcome! Check the issues page for current tasks or feature re
   - Implement proper error messages for tool call failures
   - Add rate limiting and retry mechanisms for API calls
   - Create recovery strategies for failed operations
+- [ ] Add comprehensive testing
+  - Unit tests for core components
+  - Integration tests for API interaction
+  - Test command processing pipeline
 
 ### Low Priority
 - [ ] Set up CI/CD pipeline

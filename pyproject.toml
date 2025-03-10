@@ -32,6 +32,8 @@ dependencies = [
     "textual>=0.45.1",
     "keyring>=24.3.0",
     "platformdirs>=4.1.0",
+    "pyyaml>=6.0.0",
+    "python-dotenv>=1.0.0",
 ]
 
 [project.optional-dependencies]

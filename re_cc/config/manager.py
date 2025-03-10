@@ -171,7 +171,24 @@ class ConfigManager:
     
     def get_provider_config(self, provider: str) -> Optional[ProviderConfig]:
         """Get configuration for a specific provider."""
-        return self.config.providers.get(provider)
+        provider_config = self.config.providers.get(provider)
+        
+        # If we have a provider config, check for environment variables for endpoints
+        if provider_config:
+            # Check environment variables for endpoint
+            env_var_map = {
+                "anthropic": None,  # Anthropic doesn't need custom endpoint
+                "openai": "OPENAI_API_BASE",
+                "ollama": "OLLAMA_API_BASE",
+                "custom": "CUSTOM_API_BASE",
+            }
+            
+            if provider in env_var_map and env_var_map[provider]:
+                env_endpoint = os.environ.get(env_var_map[provider])
+                if env_endpoint:
+                    provider_config.endpoint = env_endpoint
+        
+        return provider_config
     
     def get_default_provider(self) -> str:
         """Get the default provider."""

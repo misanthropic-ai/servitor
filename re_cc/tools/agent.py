@@ -4,7 +4,8 @@ from typing import Dict, Any, Optional
 
 from re_cc.tools import Tool, tool_registry
 from re_cc.prompts.tools import dispatch_agent_prompt
-from re_cc.utils.agent import dispatch_agent as util_dispatch_agent
+# Import the function directly to avoid circular imports
+from re_cc.cli.app import process_query
 
 
 async def run_agent(prompt: str) -> Dict[str, Any]:
@@ -20,7 +21,15 @@ async def run_agent(prompt: str) -> Dict[str, Any]:
         if not prompt:
             return {"success": False, "error": "Prompt is required"}
             
-        result = await util_dispatch_agent(prompt)
+        # Use the main process_query function with a custom system prompt for agent
+        from re_cc.prompts.tools import dispatch_agent_prompt
+        agent_system_prompt = dispatch_agent_prompt
+        
+        # Process the prompt with the agent system prompt
+        result = await process_query(
+            query=prompt,
+            system_prompt=agent_system_prompt,
+        )
         
         return {
             "success": True,

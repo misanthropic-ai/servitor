@@ -7,7 +7,7 @@ from textual.app import App, ComposeResult
 from textual.containers import Container, Horizontal, Vertical
 from textual.widgets import (
     Button, Header, Footer, Static, Input, Select, Label, Tabs, Tab,
-    RadioSet, RadioButton, TabPanel, TabbedContent
+    RadioSet, RadioButton, TabPane, TabbedContent
 )
 from textual.binding import Binding
 from textual.message import Message
@@ -217,11 +217,11 @@ class ConfigApp(App):
                 for provider_name, config in self.providers.items():
                     api_key = self.config_manager.get_provider_api_key(provider_name)
                     
-                    with TabPanel(provider_name.title()):
+                    with TabPane(provider_name.title()):
                         yield ProviderPanel(provider_name, config, api_key)
                 
                 # Add tab for custom provider
-                with TabPanel("Add Custom"):
+                with TabPane("Add Custom"):
                     yield Label("To add a custom provider, configure the 'custom' provider with your API endpoint and key")
         
         yield Footer()

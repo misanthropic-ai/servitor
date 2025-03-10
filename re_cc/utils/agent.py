@@ -23,7 +23,8 @@ from re_cc.utils.search import search_with_ripgrep, find_function_definition, fi
 from re_cc.utils.editor import edit_file, create_file, show_diff
 from re_cc.utils.command import execute_command
 from re_cc.utils.mcp import mcp_manager
-from re_cc.tools import tool_registry, Tool
+# Import the registry, but avoid circular import of Tool class
+from re_cc.tools import tool_registry
 
 
 console = Console()
@@ -34,6 +35,24 @@ from re_cc.prompts.tools import (
     ls_prompt, glob_tool_prompt, grep_tool_prompt, bash_tool_prompt, 
     dispatch_agent_prompt
 )
+
+
+async def dispatch_agent(prompt: str) -> str:
+    """Dispatch an agent to handle a task.
+    
+    Args:
+        prompt: The task prompt
+        
+    Returns:
+        Agent response
+    """
+    # Create an agent instance
+    agent = Agent()
+    
+    # Run the agent with the prompt
+    response = await agent.run(prompt)
+    
+    return response
 
 
 class Agent:

@@ -88,7 +88,7 @@ When using this tool, focus on the "why" and "how" rather than specific code det
 """
 
 # Register the planning tools
-@tool_registry.register_tool
+# Do not use the decorator here since we're registering multiple tools
 def register_planning_tools() -> List[Tool]:
     """Register planning tools."""
     tools = [
@@ -116,3 +116,8 @@ def register_planning_tools() -> List[Tool]:
     ]
     
     return tools
+    
+    
+# Register the planning tools
+for tool in register_planning_tools():
+    tool_registry.register_tool(tool)

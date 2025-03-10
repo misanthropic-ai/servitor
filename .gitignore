@@ -16,6 +16,9 @@ wheels/
 venv/
 env/
 
+# Environment variables
+.env
+
 # JavaScript files (original app)
 node_modules/
 cli.js

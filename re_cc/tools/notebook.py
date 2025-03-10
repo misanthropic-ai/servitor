@@ -251,7 +251,7 @@ Completely replaces the contents of a specific cell in a Jupyter notebook (.ipyn
 """
 
 # Register the notebook tools
-@tool_registry.register_tool
+# Do not use the decorator here since we're registering multiple tools
 def register_notebook_tools() -> List[Tool]:
     """Register notebook tools."""
     tools = [
@@ -282,3 +282,7 @@ def register_notebook_tools() -> List[Tool]:
     ]
     
     return tools
+    
+# Register the notebook tools
+for tool in register_notebook_tools():
+    tool_registry.register_tool(tool)

@@ -248,14 +248,14 @@ def find_class_definition(
     if language == "python":
         pattern = f"class\\s+{class_name}\\s*[\\(\\:]"
     elif language == "javascript" or language == "typescript":
-        pattern = f"class\\s+{class_name}\\s*[\\{\\extends]"
+        pattern = f"class\\s+{class_name}\\s*[{{\\extends]"
     elif language == "java":
-        pattern = f"(class|interface|enum)\\s+{class_name}\\s*[\\{\\implements\\extends]"
+        pattern = f"(class|interface|enum)\\s+{class_name}\\s*[{{\\implements\\extends]"
     elif language == "c" or language == "cpp":
-        pattern = f"(class|struct)\\s+{class_name}\\s*[\\{\\:]"
+        pattern = f"(class|struct)\\s+{class_name}\\s*[{{\\:]"
     else:
         # Generic pattern for class definitions
-        pattern = f"class\\s+{class_name}\\s*[\\{\\(\\:\\extends\\implements]"
+        pattern = f"class\\s+{class_name}\\s*[{{\\(\\:\\extends\\implements]"
     
     # Search for the pattern
     results = search_with_ripgrep(pattern, path)

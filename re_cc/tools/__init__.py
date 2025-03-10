@@ -247,5 +247,5 @@ def load_all_tools() -> None:
             logging.error(f"Failed to load tool module {module_name}: {str(e)}")
 
 
-# Load all tools on module import
-load_all_tools()
+# We'll load tools explicitly in the app.py instead of on import
+# This prevents circular imports

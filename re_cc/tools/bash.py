@@ -200,7 +200,7 @@ def execute_command(command: str, timeout: Optional[int] = None) -> Dict[str, An
 
 
 # Register bash tools
-@tool_registry.register_tool
+# Do not use decorator to avoid circular import issues
 def register_bash_tools() -> List[Tool]:
     """Register bash command execution and security tools."""
     tools = [
@@ -229,3 +229,7 @@ def register_bash_tools() -> List[Tool]:
     ]
     
     return tools
+    
+# Register the tools
+for tool in register_bash_tools():
+    tool_registry.register_tool(tool)

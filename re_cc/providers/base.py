@@ -1,6 +1,7 @@
 """Base provider interface and factory."""
 
 import importlib
+import os
 from abc import ABC, abstractmethod
 from typing import Dict, Any, List, Optional, Callable, AsyncGenerator
 
@@ -131,8 +132,20 @@ class ProviderFactory:
         if not provider_config:
             raise ValueError(f"Provider '{provider_name}' not configured")
         
-        # Get the API key
+        # Get the API key from keyring or environment variables
         api_key = config_manager.get_provider_api_key(provider_name)
+        
+        # Check environment variables if no API key is found in keyring
+        if not api_key:
+            env_var_map = {
+                "anthropic": "ANTHROPIC_API_KEY",
+                "openai": "OPENAI_API_KEY",
+                "ollama": None,  # Ollama doesn't need API key, just endpoint
+                "custom": "CUSTOM_API_KEY",
+            }
+            
+            if provider_name in env_var_map and env_var_map[provider_name]:
+                api_key = os.environ.get(env_var_map[provider_name])
         
         # Find the factory function
         factory = cls._providers.get(provider_name)

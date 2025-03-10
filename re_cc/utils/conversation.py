@@ -4,7 +4,7 @@ import json
 import os
 import time
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Any, Tuple
+from typing import Dict, List, Optional, Any, Tuple, Callable
 from pathlib import Path
 
 from rich.console import Console
@@ -191,3 +191,98 @@ class ConversationBuffer:
 
 # Global conversation buffer
 conversation_buffer = ConversationBuffer()
+
+
+async def compact_conversation() -> Dict[str, Any]:
+    """Compact the conversation history for the current session.
+    
+    Returns:
+        Result dictionary with success status
+    """
+    try:
+        # Define a summarization function
+        async def summarize_conversation(content: str) -> str:
+            # Import here to avoid circular imports
+            from re_cc.providers.base import ProviderFactory
+            from re_cc.config.manager import ConfigManager
+            
+            # Get the default provider
+            config_manager = ConfigManager()
+            provider_name = config_manager.get_default_provider()
+            provider = ProviderFactory.create(provider_name)
+            
+            # Generate a summary
+            response = await provider.generate(
+                prompt="Summarize our conversation so far in a detailed but concise way. Focus on information that would be helpful for continuing the conversation.",
+                system_prompt="You are a helpful AI assistant tasked with summarizing conversations.",
+                context=content,
+            )
+            
+            return response.text
+        
+        # Compact the conversation
+        await conversation_buffer.compact(summarize_conversation)
+        
+        return {
+            "success": True,
+            "message": "Conversation history has been compacted."
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e)
+        }
+        
+        
+def clear_conversation() -> Dict[str, Any]:
+    """Clear the conversation history for the current session.
+    
+    Returns:
+        Result dictionary with success status
+    """
+    try:
+        # Clear the conversation buffer
+        conversation_buffer.clear()
+        
+        return {
+            "success": True,
+            "message": "Conversation history has been cleared."
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e)
+        }
+        
+        
+def get_history_summary() -> str:
+    """Get a summary of the conversation history.
+    
+    Returns:
+        Summary of the conversation history
+    """
+    messages = conversation_buffer.get_messages()
+    
+    if not messages:
+        return "No conversation history"
+    
+    # Get the last 3 messages or all if less than 3
+    recent_messages = messages[-3:] if len(messages) > 3 else messages
+    
+    # Format the messages
+    formatted_messages = []
+    for msg in recent_messages:
+        role = msg.role.upper()
+        content = msg.content
+        
+        # Truncate long messages
+        if len(content) > 100:
+            content = content[:97] + "..."
+            
+        formatted_messages.append(f"{role}: {content}")
+    
+    # Add count information
+    if len(messages) > 3:
+        formatted_messages.insert(0, f"Conversation has {len(messages)} messages. Showing last 3:")
+    
+    return "\n".join(formatted_messages)
