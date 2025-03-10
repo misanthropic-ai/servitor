@@ -10,15 +10,22 @@ from re_cc.config.manager import ConfigManager, ProviderConfig
 class LLMResponse:
     """Response from an LLM."""
     
-    def __init__(self, text: str, metadata: Optional[Dict[str, Any]] = None) -> None:
+    def __init__(
+        self, 
+        text: str, 
+        metadata: Optional[Dict[str, Any]] = None,
+        tool_calls: Optional[List[Dict[str, Any]]] = None
+    ) -> None:
         """Initialize the response.
         
         Args:
             text: The text response
             metadata: Additional metadata
+            tool_calls: List of tool calls requested by the LLM
         """
         self.text = text
         self.metadata = metadata or {}
+        self.tool_calls = tool_calls or []
 
 
 class LLMProvider(ABC):
@@ -31,6 +38,8 @@ class LLMProvider(ABC):
         system_prompt: Optional[str] = None,
         temperature: float = 0.7,
         max_tokens: Optional[int] = None,
+        context: Optional[str] = None,
+        tools: Optional[List[str]] = None,
     ) -> LLMResponse:
         """Generate a response from the LLM.
         
@@ -39,6 +48,8 @@ class LLMProvider(ABC):
             system_prompt: Optional system prompt for models that support it
             temperature: The temperature to use for generation
             max_tokens: The maximum number of tokens to generate
+            context: Optional additional context for the prompt
+            tools: Optional list of tool names available to the LLM
             
         Returns:
             The LLM response
@@ -52,6 +63,8 @@ class LLMProvider(ABC):
         system_prompt: Optional[str] = None,
         temperature: float = 0.7,
         max_tokens: Optional[int] = None,
+        context: Optional[str] = None,
+        tools: Optional[List[str]] = None,
     ) -> AsyncGenerator[str, None]:
         """Generate a streaming response from the LLM.
         
@@ -60,6 +73,8 @@ class LLMProvider(ABC):
             system_prompt: Optional system prompt for models that support it
             temperature: The temperature to use for generation
             max_tokens: The maximum number of tokens to generate
+            context: Optional additional context for the prompt
+            tools: Optional list of tool names available to the LLM
             
         Yields:
             Chunks of the generated text

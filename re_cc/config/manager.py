@@ -1,12 +1,22 @@
 """Configuration manager for Re-CC."""
 
 import os
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, List
 import platformdirs
 import yaml
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from re_cc.security.keyring import KeyringManager
+
+
+class ModelConfig(BaseModel):
+    """Configuration for a model within a provider."""
+    
+    name: str
+    description: Optional[str] = None
+    context_window: Optional[int] = None
+    supports_tools: bool = False
+    is_default: bool = False
 
 
 class ProviderConfig(BaseModel):
@@ -16,6 +26,7 @@ class ProviderConfig(BaseModel):
     model: Optional[str] = None
     endpoint: Optional[str] = None
     # API key is stored separately in keyring
+    models: List[ModelConfig] = Field(default_factory=list)
 
 
 class AppConfig(BaseModel):
@@ -61,15 +72,85 @@ class ConfigManager:
                 "anthropic": ProviderConfig(
                     provider="anthropic",
                     model="claude-3-opus-20240229",
+                    models=[
+                        ModelConfig(
+                            name="claude-3-opus-20240229",
+                            description="Most capable Claude model with high-quality output",
+                            context_window=200000,
+                            supports_tools=True,
+                            is_default=True
+                        ),
+                        ModelConfig(
+                            name="claude-3-sonnet-20240229",
+                            description="Balanced Claude model with good performance",
+                            context_window=200000,
+                            supports_tools=True,
+                        ),
+                        ModelConfig(
+                            name="claude-3-haiku-20240307",
+                            description="Fast and efficient Claude model",
+                            context_window=200000,
+                            supports_tools=True,
+                        ),
+                    ],
                 ),
                 "openai": ProviderConfig(
                     provider="openai",
                     model="gpt-4o",
+                    models=[
+                        ModelConfig(
+                            name="gpt-4o",
+                            description="Latest GPT-4 model with optimal capabilities",
+                            context_window=128000,
+                            supports_tools=True,
+                            is_default=True
+                        ),
+                        ModelConfig(
+                            name="gpt-4-turbo",
+                            description="Larger context window variant of GPT-4",
+                            context_window=128000,
+                            supports_tools=True,
+                        ),
+                        ModelConfig(
+                            name="gpt-3.5-turbo",
+                            description="Fast and efficient GPT model",
+                            context_window=16000, 
+                            supports_tools=True,
+                        ),
+                    ],
                 ),
                 "ollama": ProviderConfig(
                     provider="ollama",
                     endpoint="http://localhost:11434",
                     model="llama3",
+                    models=[
+                        ModelConfig(
+                            name="llama3",
+                            description="Default Llama 3 model",
+                            supports_tools=True,
+                            is_default=True
+                        ),
+                        ModelConfig(
+                            name="llama2",
+                            description="Llama 2 model",
+                            supports_tools=False,
+                        ),
+                        ModelConfig(
+                            name="gemma",
+                            description="Google's Gemma model",
+                            supports_tools=False,
+                        ),
+                        ModelConfig(
+                            name="mistral",
+                            description="Mistral model",
+                            supports_tools=False,
+                        ),
+                        ModelConfig(
+                            name="codellama",
+                            description="Code-optimized Llama model",
+                            supports_tools=True,
+                        ),
+                    ],
                 ),
             },
         )
@@ -140,3 +221,186 @@ class ConfigManager:
     def get_all_providers(self) -> Dict[str, ProviderConfig]:
         """Get all configured providers."""
         return self.config.providers
+        
+    def get_provider_models(self, provider: str) -> List[ModelConfig]:
+        """Get all models for a provider.
+        
+        Args:
+            provider: The provider name
+            
+        Returns:
+            List of model configurations
+            
+        Raises:
+            ValueError: If the provider is not configured
+        """
+        provider_config = self.get_provider_config(provider)
+        if not provider_config:
+            raise ValueError(f"Provider '{provider}' not configured")
+            
+        return provider_config.models
+        
+    def get_default_model(self, provider: str) -> Optional[str]:
+        """Get the default model for a provider.
+        
+        Args:
+            provider: The provider name
+            
+        Returns:
+            The default model name, or None if not found
+            
+        Raises:
+            ValueError: If the provider is not configured
+        """
+        provider_config = self.get_provider_config(provider)
+        if not provider_config:
+            raise ValueError(f"Provider '{provider}' not configured")
+            
+        # Check if we have a specific default model set
+        if provider_config.model:
+            return provider_config.model
+            
+        # Otherwise, look for a model marked as default in the models list
+        for model in provider_config.models:
+            if model.is_default:
+                return model.name
+                
+        # If none found and we have models, use the first one
+        if provider_config.models:
+            return provider_config.models[0].name
+            
+        return None
+        
+    def set_default_model(self, provider: str, model_name: str) -> None:
+        """Set the default model for a provider.
+        
+        Args:
+            provider: The provider name
+            model_name: The model name
+            
+        Raises:
+            ValueError: If the provider or model is not configured
+        """
+        provider_config = self.get_provider_config(provider)
+        if not provider_config:
+            raise ValueError(f"Provider '{provider}' not configured")
+            
+        # Check if the model exists in the models list
+        model_exists = any(model.name == model_name for model in provider_config.models)
+        if not model_exists:
+            raise ValueError(f"Model '{model_name}' not found for provider '{provider}'")
+            
+        # Set the default model
+        provider_config.model = model_name
+        
+        # Update the default flag in the models list
+        for model in provider_config.models:
+            model.is_default = (model.name == model_name)
+            
+        # Save the updated config
+        self._save_config()
+        
+    def add_model(self, provider: str, model_config: ModelConfig) -> None:
+        """Add a new model to a provider.
+        
+        Args:
+            provider: The provider name
+            model_config: The model configuration
+            
+        Raises:
+            ValueError: If the provider is not configured or the model already exists
+        """
+        provider_config = self.get_provider_config(provider)
+        if not provider_config:
+            raise ValueError(f"Provider '{provider}' not configured")
+            
+        # Check if the model already exists
+        if any(model.name == model_config.name for model in provider_config.models):
+            raise ValueError(f"Model '{model_config.name}' already exists for provider '{provider}'")
+            
+        # If this is marked as default, update other models
+        if model_config.is_default:
+            for model in provider_config.models:
+                model.is_default = False
+            provider_config.model = model_config.name
+            
+        # Add the new model
+        provider_config.models.append(model_config)
+        
+        # Save the updated config
+        self._save_config()
+        
+    def update_model(self, provider: str, model_name: str, **kwargs) -> None:
+        """Update a model configuration.
+        
+        Args:
+            provider: The provider name
+            model_name: The model name
+            **kwargs: The fields to update
+            
+        Raises:
+            ValueError: If the provider or model is not configured
+        """
+        provider_config = self.get_provider_config(provider)
+        if not provider_config:
+            raise ValueError(f"Provider '{provider}' not configured")
+            
+        # Find the model in the models list
+        model_found = False
+        for model in provider_config.models:
+            if model.name == model_name:
+                model_found = True
+                
+                # Update the model fields
+                for key, value in kwargs.items():
+                    if hasattr(model, key):
+                        setattr(model, key, value)
+                
+                # If this is now the default model, update other models
+                if kwargs.get("is_default", False):
+                    for other_model in provider_config.models:
+                        if other_model.name != model_name:
+                            other_model.is_default = False
+                    provider_config.model = model_name
+                    
+                break
+                
+        if not model_found:
+            raise ValueError(f"Model '{model_name}' not found for provider '{provider}'")
+            
+        # Save the updated config
+        self._save_config()
+        
+    def remove_model(self, provider: str, model_name: str) -> None:
+        """Remove a model from a provider.
+        
+        Args:
+            provider: The provider name
+            model_name: The model name
+            
+        Raises:
+            ValueError: If the provider or model is not configured
+        """
+        provider_config = self.get_provider_config(provider)
+        if not provider_config:
+            raise ValueError(f"Provider '{provider}' not configured")
+            
+        # Find the model in the models list
+        for i, model in enumerate(provider_config.models):
+            if model.name == model_name:
+                # Check if this is the default model
+                was_default = model.is_default
+                
+                # Remove the model
+                provider_config.models.pop(i)
+                
+                # If this was the default model, update the default
+                if was_default and provider_config.models:
+                    provider_config.models[0].is_default = True
+                    provider_config.model = provider_config.models[0].name
+                
+                # Save the updated config
+                self._save_config()
+                return
+                
+        raise ValueError(f"Model '{model_name}' not found for provider '{provider}'")

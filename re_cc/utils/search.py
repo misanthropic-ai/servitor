@@ -296,3 +296,39 @@ def find_import(
     
     # Search for the pattern
     return search_with_ripgrep(pattern, path)
+
+
+def find_files_with_glob(pattern: str, base_dir: Optional[str] = None) -> List[str]:
+    """Find files matching a glob pattern.
+    
+    Args:
+        pattern: The glob pattern to match
+        base_dir: The base directory to search in
+        
+    Returns:
+        A list of matching file paths
+    """
+    import glob
+    import os
+    
+    # Set base directory
+    cwd = None
+    if base_dir:
+        cwd = os.getcwd()
+        os.chdir(base_dir)
+    
+    try:
+        # Find files
+        files = glob.glob(pattern, recursive=True)
+        
+        # Convert to absolute paths
+        abs_files = [os.path.abspath(f) for f in files]
+        
+        # Sort by modification time (newest first)
+        abs_files.sort(key=lambda f: os.path.getmtime(f) if os.path.exists(f) else 0, reverse=True)
+        
+        return abs_files
+    finally:
+        # Restore directory if changed
+        if cwd:
+            os.chdir(cwd)

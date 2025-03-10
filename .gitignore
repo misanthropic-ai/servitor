@@ -20,7 +20,11 @@ env/
 node_modules/
 cli.js
 cli.mjs
+cli_ugly.js
+cli_deobfuscated.js
+prompts.js
 package.json
+package-lock.json
 vendor/
 yoga.wasm
 scripts/

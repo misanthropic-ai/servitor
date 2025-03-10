@@ -26,7 +26,12 @@ Implements all features from the original Claude Code CLI, including:
 - **Command Execution**: Run commands with streaming output
 - **Git Integration**: Repository awareness and context gathering
 - **Slash Commands**: Full command system with fuzzy matching
-  - `/help`, `/version`, `/bug`, `/compact`, `/tools`, etc.
+  - File operations: `/edit`, `/view`, `/create`, `/find`
+  - Shell access: `/run`, `/shell`
+  - Provider management: `/provider`, `/providers`
+  - System features: `/help`, `/version`, `/bug`, `/tools`, `/compact`
+  - Task management: `/task create`, `/task list`, etc.
+  - MCP services: `/mcp list`, `/mcp add`, etc.
 - **Tool Management**: Enable/disable features as needed
 - **Conversation Management**: Compact and continue conversations
 
@@ -79,12 +84,12 @@ This document outlines the tasks necessary to create a Python version of the Cla
    - [x] Create codebase understanding with context-aware commands
 
 6. **Conversation & Planning System**
-   - [ ] Implement conversation history buffer with persistence
+   - [x] Implement conversation history buffer with persistence
    - [ ] Create environment context gathering for improved planning
-   - [ ] Build hybrid LLM planning system with light structure
-   - [ ] Add task tracking with state management
-   - [ ] Implement the `/compact` command with summarization
-   - [ ] Create session management for continued conversations
+   - [x] Build hybrid LLM planning system with light structure
+   - [x] Add task tracking with state management
+   - [x] Implement the `/compact` command with summarization
+   - [x] Create session management for continued conversations
 
 7. **Testing & Documentation**
    - [ ] Write unit tests for core components
@@ -112,7 +117,7 @@ This document outlines the tasks necessary to create a Python version of the Cla
 - Minimal dependencies
 - Clean, maintainable code architecture
 - Comprehensive error handling
-- Similar user experience to original Node.js version, with enhancements
+- Similar user experience to original Claude CLI, with enhancements
 
 ## Installation & Usage
 
@@ -162,6 +167,138 @@ Re-CC includes a built-in TUI (Terminal User Interface) for managing providers a
 ## Contributing
 
 Contributions are welcome! Check the issues page for current tasks or feature requests.
+
+## Recent Changes
+
+### 2024-10-07
+- Finalized the command system integration
+  - Enhanced Tool class with visibility, command_aliases, and command_pattern
+  - Updated ToolRegistry to support command matching and filtering
+  - Implemented `!` prefix for direct terminal commands
+  - Added comprehensive user-facing commands like `/config`, `/doctor`, etc.
+  - Created dynamic help display from tool registry
+  - Added PR review and comment commands with GitHub CLI integration
+
+### 2024-10-06
+- Completed the agent implementation to properly use the tool registry
+  - Added multi-round tool call processing with maximum iteration limit
+  - Implemented tool call format compatibility for different providers
+  - Added proper task state management with progress tracking
+  - Improved error handling and recovery for tool calls
+- Improved CLI app integration with the agent system
+  - Refactored process_query to leverage the enhanced agent for tool processing
+  - Added better conversation history management during tool execution
+  - Created more robust error handling in tool execution flow
+- Added all missing tool implementations from original Claude CLI
+  - Implemented notebook tools (ReadNotebook, NotebookEditCell)
+  - Added PR tools (PRComments, PRReview) with GitHub CLI integration
+  - Created planning tools (Thinking, Architect) for reasoning and design
+  - Implemented BashPolicySpec for command safety verification
+- Enhanced the tool registry system
+  - Updated init module to automatically load all tool modules
+  - Improved tool registration with validation
+  - Added support for different tool formats from various providers
+- Enhanced provider interfaces and model management
+  - Implemented OpenAI provider with robust tool calling support
+  - Added Ollama provider with local model tool capabilities
+  - Created comprehensive model configuration system
+  - Added YAML-based model configuration with tool support information
+  - Implemented model management API for adding/updating/removing models
+- Refactored and reorganized codebase for better maintainability
+  - Merged redundant bash command tools into unified module
+  - Consolidated provider-specific model configurations
+  - Improved error handling patterns across the codebase
+  - Added complete type annotations for better IDE support
+
+### 2024-10-03
+- Implemented structured prompt library with comprehensive prompts from prompts.js
+- Created properly typed Tool registry with validation
+- Improved Agent implementation to work with tools registry
+- Added conversation history buffer with persistence
+- Implemented `/compact` and `/clear` commands for conversation management
+- Restructured tools as PascalCase Tool classes for better organization
+- Created proper implementation of Task system for tracking multi-step operations
+- Added MCP service integration for extensibility
+- Reorganized codebase to better match the original architecture
+- Fixed the main flow to correctly handle LLM tool calls
+
+## Next Steps
+
+### High Priority
+- [x] Finish updating agent.py implementation 
+  - Properly connect agent system to use global tool registry
+  - Fix circular import issues
+  - Create proper tool handlers for user commands vs. agent tools
+- [x] Improve provider interfaces for tool calling
+  - Complete OpenAI provider implementation for tool calls
+  - Add Ollama provider implementation for tool calls
+  - Implement proper JSON schema generation for tools
+- [x] Integrate planning system with CLI
+  - Connect planning components to the main CLI flow
+  - Implement proper task state tracking during multi-step operations
+
+### Medium Priority
+- [x] Implement missing tools
+  - PR tools (PRComments, PRReview)
+  - BashPolicySpec for command safety
+  - Thinking tool for reasoning steps
+  - Architect tool for planning
+  - Provider management tools
+- [x] Complete slash command handler system
+  - Properly map slash commands to tool registry
+  - Separate user-facing commands from agent-only tools
+  - Implement proper error handling for commands
+- [x] Add error handling and recovery
+  - Implement proper error messages for tool call failures
+  - Add rate limiting and retry mechanisms for API calls
+  - Create recovery strategies for failed operations
+
+### Low Priority
+- [ ] Set up CI/CD pipeline
+- [ ] Create packaging for PyPI
+- [ ] Build platform-specific packages
+- [ ] Implement auto-update mechanism
+- [ ] Add language-specific features
+- [ ] Create plugin system
+
+## Command System Design
+
+Re-CC uses two different but related systems for handling commands:
+
+### 1. Slash Commands (User Interface)
+
+Slash commands are text prefixed with `/` that users type directly in the terminal interface. These are human-facing commands intended for direct interaction and include:
+
+- **File Operations**: `/edit`, `/view`, `/create`, `/find`, etc.
+- **Shell Access**: `/run`, `/shell`
+- **Provider Management**: `/provider`, `/providers`
+- **System Features**: `/help`, `/bug`, `/version`, `/tools`, `/compact`
+- **Task Management**: `/task create`, `/task list`, etc.
+- **MCP Services**: `/mcp list`, `/mcp add`, etc.
+
+The CLI application parses these commands directly and maps them to the appropriate functionality, which may or may not involve calling LLM tools.
+
+### 2. Tool Registry (LLM Interface)
+
+The tool registry contains Tool objects that the LLM can call during its reasoning process. These tools:
+
+- Have formal schema definitions (parameters, types, validation)
+- Are registered in a global registry
+- Can be invoked by the LLM through `tool_use` blocks
+- Include both user-accessible tools and LLM-only internal tools
+
+Some tools (like ViewFile) are accessible through both systems, while others (like ThinkingTool) are meant only for LLM use.
+
+### Mapping Between Systems
+
+The relationship between user slash commands and LLM tools follows these patterns:
+
+1. **Direct Mapping**: Many slash commands map 1:1 to tools (e.g., `/edit` → EditFile)
+2. **Command-Only**: Some slash commands don't use tools (e.g., `/provider` for configuration)
+3. **Tool-Only**: Some tools are only for LLM use (e.g., ThinkingTool, DispatchAgent)
+4. **Command Groups**: Some slash commands create a namespace (e.g., `/task list` maps to ListTasks tool)
+
+The `parse_special_commands` function in app.py provides the mapping between user input and the appropriate handler, which may then use tools from the registry.
 
 ## License
 
