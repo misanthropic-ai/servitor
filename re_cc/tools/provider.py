@@ -288,76 +288,102 @@ Removes a model from a provider.
 This tool removes a model from the configuration for a specific provider. If the model is the default, another model will be set as default.
 """
 
-# Register provider tools
-@tool_registry.register_tool
-def register_provider_tools() -> List[Tool]:
-    """Register provider tools."""
-    tools = [
-        Tool(
-            name="ListProviders",
-            description="Lists all configured LLM providers",
-            handler=handle_list_providers,
-            prompt=list_providers_prompt,
-            parameters={},
-            required_params=[]
-        ),
-        Tool(
-            name="SetProvider",
-            description="Sets the default LLM provider",
-            handler=handle_set_provider,
-            prompt=set_provider_prompt,
-            parameters={
-                "provider_name": {"description": "The provider to set as default", "type": "string"}
-            },
-            required_params=["provider_name"]
-        ),
-        Tool(
-            name="ListModels",
-            description="Lists all available models for a provider",
-            handler=handle_list_models,
-            prompt=list_models_prompt,
-            parameters={
-                "provider_name": {"description": "The provider name", "type": "string"}
-            },
-            required_params=["provider_name"]
-        ),
-        Tool(
-            name="SetModel",
-            description="Sets the default model for a provider",
-            handler=handle_set_model,
-            prompt=set_model_prompt,
-            parameters={
-                "provider_name": {"description": "The provider name", "type": "string"},
-                "model_name": {"description": "The model name to set as default", "type": "string"}
-            },
-            required_params=["provider_name", "model_name"]
-        ),
-        Tool(
-            name="AddModel",
-            description="Adds a new model to a provider",
-            handler=handle_add_model,
-            prompt=add_model_prompt,
-            parameters={
-                "provider_name": {"description": "The provider name", "type": "string"},
-                "model_name": {"description": "The model name", "type": "string"},
-                "description": {"description": "Optional description", "type": "string"},
-                "context_window": {"description": "Optional context window size", "type": "number"},
-                "supports_tools": {"description": "Whether the model supports tools", "type": "boolean"},
-                "is_default": {"description": "Whether to set as default model", "type": "boolean"}
-            },
-            required_params=["provider_name", "model_name"]
-        ),
-        Tool(
-            name="RemoveModel",
-            description="Removes a model from a provider",
-            handler=handle_remove_model,
-            prompt=remove_model_prompt,
-            parameters={
-                "provider_name": {"description": "The provider name", "type": "string"},
-                "model_name": {"description": "The model name", "type": "string"}
-            },
-            required_params=["provider_name", "model_name"]
-        )
-    ]
-    
-    return tools
+# Create provider tools
+ListProviders = Tool(
+    name="ListProviders",
+    description="Lists all configured LLM providers",
+    handler=handle_list_providers,
+    prompt=list_providers_prompt,
+    parameters={},
+    required_params=[],
+    user_facing_name="Providers",
+    visibility="user",
+    command_aliases=["list-providers"],
+    command_pattern=r"^/providers$"
+)
+
+SetProvider = Tool(
+    name="SetProvider",
+    description="Sets the default LLM provider",
+    handler=handle_set_provider,
+    prompt=set_provider_prompt,
+    parameters={
+        "provider_name": {"description": "The provider to set as default", "type": "string"}
+    },
+    required_params=["provider_name"],
+    user_facing_name="Provider",
+    visibility="user",
+    command_aliases=["set-provider", "use-provider"],
+    command_pattern=r"^/provider\s+(\S+)$"
+)
+
+ListModels = Tool(
+    name="ListModels",
+    description="Lists all available models for a provider",
+    handler=handle_list_models,
+    prompt=list_models_prompt,
+    parameters={
+        "provider_name": {"description": "The provider name", "type": "string"}
+    },
+    required_params=["provider_name"],
+    user_facing_name="Models",
+    visibility="user",
+    command_aliases=["list-models"],
+    command_pattern=r"^/models\s+(\S+)$"
+)
+
+SetModel = Tool(
+    name="SetModel",
+    description="Sets the default model for a provider",
+    handler=handle_set_model,
+    prompt=set_model_prompt,
+    parameters={
+        "provider_name": {"description": "The provider name", "type": "string"},
+        "model_name": {"description": "The model name to set as default", "type": "string"}
+    },
+    required_params=["provider_name", "model_name"],
+    user_facing_name="Model",
+    visibility="user",
+    command_aliases=["set-model", "use-model"],
+    command_pattern=r"^/model\s+(\S+)\s+(\S+)$"
+)
+
+AddModel = Tool(
+    name="AddModel",
+    description="Adds a new model to a provider",
+    handler=handle_add_model,
+    prompt=add_model_prompt,
+    parameters={
+        "provider_name": {"description": "The provider name", "type": "string"},
+        "model_name": {"description": "The model name", "type": "string"},
+        "description": {"description": "Optional description", "type": "string"},
+        "context_window": {"description": "Optional context window size", "type": "number"},
+        "supports_tools": {"description": "Whether the model supports tools", "type": "boolean"},
+        "is_default": {"description": "Whether to set as default model", "type": "boolean"}
+    },
+    required_params=["provider_name", "model_name"],
+    user_facing_name="AddModel",
+    visibility="user",
+    command_aliases=["add-model"],
+    command_pattern=r"^/add-model\s+(\S+)\s+(\S+)(?:\s+(.+))?$"
+)
+
+RemoveModel = Tool(
+    name="RemoveModel",
+    description="Removes a model from a provider",
+    handler=handle_remove_model,
+    prompt=remove_model_prompt,
+    parameters={
+        "provider_name": {"description": "The provider name", "type": "string"},
+        "model_name": {"description": "The model name", "type": "string"}
+    },
+    required_params=["provider_name", "model_name"],
+    user_facing_name="RemoveModel",
+    visibility="user",
+    command_aliases=["remove-model", "delete-model"],
+    command_pattern=r"^/remove-model\s+(\S+)\s+(\S+)$"
+)
+
+# Register all provider tools
+for tool in [ListProviders, SetProvider, ListModels, SetModel, AddModel, RemoveModel]:
+    tool_registry.register_tool(tool)

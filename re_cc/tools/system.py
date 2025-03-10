@@ -38,6 +38,8 @@ def clear_history() -> Dict[str, Any]:
     """
     try:
         clear_conversation()
+        # The actual clearing happens in the main app.py loop
+        # when it detects this tool is called
         return {
             "success": True,
             "message": "Conversation history cleared"
