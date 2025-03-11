@@ -34,6 +34,8 @@ dependencies = [
     "platformdirs>=4.1.0",
     "pyyaml>=6.0.0",
     "python-dotenv>=1.0.0",
+    "fastapi>=0.103.1",
+    "uvicorn>=0.23.2",
 ]
 
 [project.optional-dependencies]
@@ -46,7 +48,7 @@ dev = [
 ]
 
 [project.scripts]
-re-cc = "re_cc.__main__:main"
+re-cc = "re_cc.__main__:app"
 
 [build-system]
 requires = ["hatchling"]

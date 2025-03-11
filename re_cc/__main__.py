@@ -12,6 +12,8 @@ from re_cc import __version__
 from re_cc.cli.app import app as cli_app
 from re_cc.config.manager import ConfigManager
 from re_cc.terminal.tui import launch_tui
+from re_cc.repl.cli import main as repl_main
+from re_cc.api.server import main as server_main
 
 # Load environment variables from .env file
 load_dotenv()
@@ -55,9 +57,8 @@ def callback(
         launch_tui()
         sys.exit(0)
     
-    # Launch the main CLI app (async) by default when no subcommand is provided
-    import asyncio
-    asyncio.run(cli_app())
+    # By default, launch the TUI application when no subcommand is provided
+    launch_tui()
 
 
 @app.command()
@@ -100,6 +101,36 @@ def config(
     except Exception as e:
         console.print(f"[bold red]Error:[/] {str(e)}")
         sys.exit(1)
+
+
+@app.command()
+def repl(
+    provider: Optional[str] = typer.Option(None, help="Provider name to use"),
+    config_path: Optional[str] = typer.Option(None, help="Path to config file"),
+    conversation_id: Optional[str] = typer.Option(None, help="ID of conversation to resume"),
+    debug: bool = typer.Option(False, help="Enable debug logging"),
+    sync: bool = typer.Option(False, help="Run in synchronous mode"),
+) -> None:
+    """Start a REPL interface for interactive use."""
+    repl_main(
+        provider_name=provider,
+        config_path=config_path,
+        conversation_id=conversation_id,
+        debug=debug,
+        async_mode=not sync,
+    )
+
+
+@app.command()
+def server(
+    host: str = typer.Option("127.0.0.1", help="Host to bind to"),
+    port: int = typer.Option(8000, help="Port to listen on"),
+    debug: bool = typer.Option(False, help="Enable debug logging"),
+) -> None:
+    """Start an HTTP API server."""
+    console.print(f"Starting Re-CC API server on [bold]{host}:{port}[/]")
+    console.print("Press Ctrl+C to stop")
+    server_main(host=host, port=port, debug=debug)
 
 
 if __name__ == "__main__":

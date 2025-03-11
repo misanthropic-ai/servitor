@@ -39,14 +39,20 @@ class AppConfig(BaseModel):
 class ConfigManager:
     """Manages the application configuration."""
     
-    def __init__(self) -> None:
-        """Initialize the configuration manager."""
+    def __init__(self, config_path: Optional[str] = None) -> None:
+        """Initialize the configuration manager.
+        
+        Args:
+            config_path: Optional path to the configuration file. If not provided,
+                        the default path will be used.
+        """
         self.config_dir = platformdirs.user_config_dir("re-cc")
-        self.config_file = os.path.join(self.config_dir, "config.yaml")
+        self.config_file = config_path or os.path.join(self.config_dir, "config.yaml")
         self.keyring = KeyringManager()
         
-        # Create config directory if it doesn't exist
-        os.makedirs(self.config_dir, exist_ok=True)
+        # Create config directory if default path and directory doesn't exist
+        if not config_path:
+            os.makedirs(self.config_dir, exist_ok=True)
         
         # Load or create config
         self.config = self._load_config()
@@ -71,14 +77,20 @@ class ConfigManager:
             providers={
                 "anthropic": ProviderConfig(
                     provider="anthropic",
-                    model="claude-3-opus-20240229",
+                    model="claude-3-7-sonnet-20250219",
                     models=[
+                        ModelConfig(
+                            name="claude-3-7-sonnet-20250219",
+                            description="Latest Claude 3.7 Sonnet model",
+                            context_window=200000,
+                            supports_tools=True,
+                            is_default=True
+                        ),
                         ModelConfig(
                             name="claude-3-opus-20240229",
                             description="Most capable Claude model with high-quality output",
                             context_window=200000,
                             supports_tools=True,
-                            is_default=True
                         ),
                         ModelConfig(
                             name="claude-3-sonnet-20240229",

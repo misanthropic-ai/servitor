@@ -147,11 +147,21 @@ class ProviderFactory:
             if provider_name in env_var_map and env_var_map[provider_name]:
                 api_key = os.environ.get(env_var_map[provider_name])
         
+        # The factory might not be registered yet, so import the providers
+        # Import all provider modules to ensure they're registered
+        providers_to_import = ["anthropic", "openai", "ollama"]
+        for provider in providers_to_import:
+            try:
+                module_name = f"re_cc.providers.{provider}"
+                importlib.import_module(module_name)
+            except ImportError:
+                pass
+        
         # Find the factory function
         factory = cls._providers.get(provider_name)
         
         if not factory:
-            # Try to import the provider module dynamically
+            # Try to import the provider module dynamically again
             try:
                 module_name = f"re_cc.providers.{provider_name}"
                 importlib.import_module(module_name)
@@ -160,7 +170,7 @@ class ProviderFactory:
                 pass
         
         if not factory:
-            raise ValueError(f"Provider '{provider_name}' is not supported")
+            raise ValueError(f"Provider '{provider_name}' is not supported. Available providers: {list(cls._providers.keys())}")
         
         # Create the provider
         return factory(provider_config, api_key or "")

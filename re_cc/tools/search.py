@@ -52,6 +52,17 @@ def grep_search(pattern: str, path: Optional[str] = None, include: Optional[str]
     try:
         if not pattern:
             return {"success": False, "error": "Pattern is required"}
+        
+        # Fix include parameter if it's not a string
+        if include is not None:
+            if not isinstance(include, str):
+                # Handle lists or other types by converting to string
+                if isinstance(include, (list, tuple)):
+                    # Join lists with commas for ripgrep
+                    include = ",".join(str(i) for i in include)
+                else:
+                    # Convert to string for any other type
+                    include = str(include)
             
         results = search_with_ripgrep(pattern, path=path, include=include)
         
@@ -72,7 +83,11 @@ def grep_search(pattern: str, path: Optional[str] = None, include: Optional[str]
             "count": len(formatted_results)
         }
     except Exception as e:
-        return {"success": False, "error": str(e)}
+        error_msg = str(e)
+        # Add more context to the error message
+        if "include" in error_msg.lower():
+            error_msg += f" (include parameter was: {type(include).__name__}={include!r})"
+        return {"success": False, "error": error_msg}
 
 
 def find_function(function_name: str) -> Dict[str, Any]:

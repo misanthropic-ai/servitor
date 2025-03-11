@@ -34,6 +34,7 @@ class ConversationBuffer:
         self.conversation_id = conversation_id or f"conversation_{int(time.time())}"
         self.max_messages = max_messages
         self.messages: List[Message] = []
+        self.created_at = time.time()
         self._load_conversation()
     
     def add_message(self, role: str, content: str, metadata: Optional[Dict[str, Any]] = None) -> None:
@@ -59,6 +60,70 @@ class ConversationBuffer:
         
         # Persist the conversation
         self._save_conversation()
+    
+    def add_user_message(self, content: str, metadata: Optional[Dict[str, Any]] = None) -> None:
+        """Add a user message to the conversation.
+        
+        Args:
+            content: The message content
+            metadata: Optional metadata
+        """
+        self.add_message("user", content, metadata)
+    
+    def add_assistant_message(self, content: str, metadata: Optional[Dict[str, Any]] = None) -> None:
+        """Add an assistant message to the conversation.
+        
+        Args:
+            content: The message content
+            metadata: Optional metadata
+        """
+        self.add_message("assistant", content, metadata)
+    
+    def add_system_message(self, content: str, metadata: Optional[Dict[str, Any]] = None) -> None:
+        """Add a system message to the conversation.
+        
+        Args:
+            content: The message content
+            metadata: Optional metadata
+        """
+        self.add_message("system", content, metadata)
+    
+    def get_context(self) -> str:
+        """Get the conversation context as a single string.
+        
+        Returns:
+            The conversation context
+        """
+        if not self.messages:
+            return ""
+        
+        return "\n\n".join([
+            f"{msg.role.upper()}: {msg.content}" 
+            for msg in self.messages
+        ])
+    
+    def save(self) -> str:
+        """Save the conversation to disk.
+        
+        Returns:
+            The conversation ID
+        """
+        self._save_conversation()
+        return self.conversation_id
+    
+    def load(self, conversation_id: str) -> None:
+        """Load a conversation from disk.
+        
+        Args:
+            conversation_id: The ID of the conversation to load
+        """
+        old_id = self.conversation_id
+        self.conversation_id = conversation_id
+        try:
+            self._load_conversation()
+        except Exception as e:
+            self.conversation_id = old_id
+            raise ValueError(f"Failed to load conversation: {str(e)}")
     
     def get_messages(self, limit: Optional[int] = None) -> List[Message]:
         """Get the conversation messages.
@@ -286,3 +351,29 @@ def get_history_summary() -> str:
         formatted_messages.insert(0, f"Conversation has {len(messages)} messages. Showing last 3:")
     
     return "\n".join(formatted_messages)
+
+
+def format_conversation(messages: List[Message]) -> str:
+    """Format conversation messages in markdown format.
+    
+    Args:
+        messages: List of conversation messages
+        
+    Returns:
+        Markdown-formatted conversation
+    """
+    if not messages:
+        return "No conversation history"
+    
+    formatted = []
+    
+    for msg in messages:
+        role_display = {
+            "user": "**You:**",
+            "assistant": "**Assistant:**",
+            "system": "**System:**"
+        }.get(msg.role.lower(), f"**{msg.role.title()}:**")
+        
+        formatted.append(f"{role_display}\n\n{msg.content}\n")
+    
+    return "\n".join(formatted)

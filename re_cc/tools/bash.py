@@ -6,7 +6,7 @@ from typing import Dict, List, Any, Optional, Tuple
 
 from re_cc.tools import Tool, tool_registry
 from re_cc.prompts.tools import bash_tool_prompt
-from re_cc.utils.command import execute_command as cmd_execute
+from re_cc.utils.command import execute_command_async as cmd_execute_command_async
 
 
 BANNED_COMMANDS = [
@@ -146,7 +146,7 @@ The tool will check for unsafe commands like curl, wget, and network utilities w
 For increased safety, always review commands before execution, especially those containing shell operators like |, >, ;, &&, etc.
 """
 
-def execute_command(command: str, timeout: Optional[int] = None) -> Dict[str, Any]:
+async def execute_command(command: str, timeout: Optional[int] = None) -> Dict[str, Any]:
     """Execute a shell command.
     
     Args:
@@ -182,8 +182,11 @@ def execute_command(command: str, timeout: Optional[int] = None) -> Dict[str, An
         if timeout:
             timeout_seconds = timeout / 1000
         
-        # Execute the command
-        result = cmd_execute(command=command, timeout=timeout_seconds)
+        # Execute the command asynchronously
+        result = await cmd_execute_command_async(
+            command=command, 
+            timeout=timeout_seconds
+        )
         
         return {
             "success": result.success,

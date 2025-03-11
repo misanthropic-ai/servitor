@@ -47,9 +47,33 @@ class Tool:
                 param_spec = self.parameters[param_name]
                 expected_type = param_spec.get("type")
                 
-                # Only validate if we have a type
-                if expected_type and not isinstance(param_value, self._get_type(expected_type)):
-                    errors[param_name] = f"Parameter '{param_name}' must be of type {expected_type}"
+                # Only validate if we have a type and the value is not None
+                if expected_type and param_value is not None:
+                    expected_python_type = self._get_type(expected_type)
+                    
+                    # Check if the type matches
+                    if not isinstance(param_value, expected_python_type):
+                        # For array type, check if we can convert to array/list
+                        if expected_type == "array" and isinstance(param_value, str):
+                            try:
+                                # Try to interpret as comma-separated values
+                                errors[param_name] = f"Parameter '{param_name}' must be an array/list, not a string. If you meant to provide multiple values, use a list instead of a comma-separated string."
+                            except Exception:
+                                errors[param_name] = f"Parameter '{param_name}' must be of type {expected_type}, not {type(param_value).__name__}"
+                        else:
+                            errors[param_name] = f"Parameter '{param_name}' must be of type {expected_type}, not {type(param_value).__name__}"
+                
+                # Check for additional constraints in the parameter spec
+                if param_spec.get("enum") and param_value not in param_spec["enum"]:
+                    valid_values = ", ".join([str(v) for v in param_spec["enum"]])
+                    errors[param_name] = f"Parameter '{param_name}' must be one of: {valid_values}"
+                
+                # Check for numeric constraints
+                if expected_type in ["number", "integer"] and param_value is not None:
+                    if "minimum" in param_spec and param_value < param_spec["minimum"]:
+                        errors[param_name] = f"Parameter '{param_name}' must be at least {param_spec['minimum']}"
+                    if "maximum" in param_spec and param_value > param_spec["maximum"]:
+                        errors[param_name] = f"Parameter '{param_name}' must be at most {param_spec['maximum']}"
         
         return errors
     
@@ -104,11 +128,19 @@ class ToolRegistry:
         Args:
             tool: The tool to register
         """
+        logging.debug(f"Registering tool: {tool.name}")
         self.tools[tool.name] = tool
         
         # Register command pattern if provided
         if tool.command_pattern:
             self.command_patterns[tool.command_pattern] = tool
+            
+        logging.debug(f"Tool registry now has {len(self.tools)} tools")
+    
+    def register_all_tools(self) -> None:
+        """Register all available tools by loading all tool modules."""
+        # Load all tool modules
+        load_all_tools()
     
     def get_tool(self, name: str) -> Optional[Tool]:
         """Get a tool by name.
@@ -185,6 +217,75 @@ class ToolRegistry:
         
         return commands
     
+    def get_tool_by_command(self, command: str) -> Optional[Tool]:
+        """Get a tool by its command name or alias.
+        
+        Args:
+            command: The command name or alias
+            
+        Returns:
+            The tool, or None if not found
+        """
+        commands = self.get_user_commands()
+        if command in commands:
+            return commands[command]["tool"]
+        return None
+    
+    def execute(self, tool_name: str, **params) -> Any:
+        """Execute a tool by name with parameters.
+        
+        Args:
+            tool_name: Name of the tool to execute
+            **params: Parameters to pass to the tool
+            
+        Returns:
+            The result of the tool execution
+            
+        Raises:
+            ValueError: If the tool is not found or parameters are invalid
+            Exception: If the tool execution fails
+        """
+        # Try to find the tool
+        tool = self.get_tool(tool_name)
+        if not tool:
+            # Check if tool exists with a different case
+            available_tools = self.get_tool_names()
+            for available_tool in available_tools:
+                if available_tool.lower() == tool_name.lower():
+                    return {
+                        "success": False, 
+                        "error": f"Tool '{tool_name}' not found. Did you mean '{available_tool}'?"
+                    }
+            
+            error_message = f"Tool '{tool_name}' not found. Available tools: {', '.join(available_tools[:10])}"
+            if len(available_tools) > 10:
+                error_message += f" and {len(available_tools) - 10} more"
+            
+            return {"success": False, "error": error_message}
+        
+        # Validate parameters
+        errors = tool.validate_parameters(params)
+        if errors:
+            error_str = ", ".join([f"{k}: {v}" for k, v in errors.items()])
+            param_info = "Parameters provided: " + ", ".join([f"{k}={v!r}" for k, v in params.items()])
+            required_params = f"Required parameters: {', '.join(tool.required_params)}" if tool.required_params else "No required parameters"
+            error_detail = f"Invalid parameters for tool '{tool_name}': {error_str}\n{param_info}\n{required_params}"
+            return {"success": False, "error": error_detail}
+        
+        try:
+            # Execute the tool
+            result = tool.handler(**params)
+            
+            # Ensure result has success field if it's a dict
+            if isinstance(result, dict) and "success" not in result:
+                result["success"] = True
+                
+            return result
+        except Exception as e:
+            error_detail = f"Error executing tool '{tool_name}': {str(e)}"
+            logging.error(error_detail, exc_info=True)
+            return {"success": False, "error": error_detail}
+    
     def match_command(self, command_text: str) -> Tuple[Optional[Tool], Dict[str, Any]]:
         """Match command text to a registered tool and extract arguments.
         
@@ -218,6 +319,16 @@ class ToolRegistry:
 
 # Global tool registry instance
 tool_registry = ToolRegistry()
+logging.debug("Created global tool registry instance")
+
+
+def get_global_registry() -> ToolRegistry:
+    """Get the global tool registry instance.
+    
+    Returns:
+        The global tool registry
+    """
+    return tool_registry
 
 
 def load_all_tools() -> None:
@@ -238,13 +349,31 @@ def load_all_tools() -> None:
         # Add more tool modules here as they are implemented
     ]
     
+    # Log the current tools before importing
+    logging.debug(f"Current tools before loading: {len(tool_registry.tools)}")
+    
     # Import each module to register its tools
     for module_name in tool_modules:
         try:
-            importlib.import_module(module_name)
+            module = importlib.import_module(module_name)
             logging.debug(f"Loaded tool module: {module_name}")
+            
+            # Check if module imported properly
+            if hasattr(module, "__file__"):
+                logging.debug(f"Module {module_name} loaded from {module.__file__}")
+            
+            # Check if tools were registered after loading this module
+            logging.debug(f"Tools count after loading {module_name}: {len(tool_registry.tools)}")
         except ImportError as e:
             logging.error(f"Failed to load tool module {module_name}: {str(e)}")
+    
+    # Log all tools after loading all modules
+    logging.debug(f"Final tools count: {len(tool_registry.tools)}")
+    if tool_registry.tools:
+        tool_names = list(tool_registry.tools.keys())
+        logging.debug(f"Registered tools: {tool_names[:5]}...")
+    else:
+        logging.error("No tools registered!")
 
 
 # We'll load tools explicitly in the app.py instead of on import

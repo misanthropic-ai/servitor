@@ -2,11 +2,26 @@
 
 import asyncio
 import json
+import os
 from typing import Optional, AsyncGenerator, Dict, Any, List
 
 import anthropic
 from anthropic.types import Message
-from anthropic.types.tool_use import Tool, ToolUse
+
+# Try to import Tool from different locations depending on package version
+try:
+    from anthropic.types.tool_use import Tool, ToolUse
+except ImportError:
+    try:
+        from anthropic.types import Tool
+        ToolUse = None  # Might not be needed in newer versions
+    except ImportError:
+        # Define a minimal Tool class for compatibility
+        class Tool:
+            def __init__(self, name, description, input_schema):
+                self.name = name
+                self.description = description
+                self.input_schema = input_schema
 
 from re_cc.providers.base import LLMProvider, LLMResponse, ProviderFactory
 from re_cc.config.manager import ProviderConfig
@@ -28,7 +43,7 @@ class AnthropicProvider(LLMProvider):
         self.client = anthropic.AsyncAnthropic(api_key=api_key)
         self.model = config.model or "claude-3-opus-20240229"
     
-    def _create_tool_schema(self, tool_names: Optional[List[str]] = None) -> List[Tool]:
+    def _create_tool_schema(self, tool_names: Optional[List[str]] = None) -> List[Dict[str, Any]]:
         """Create tool schemas for tools to be used by the provider.
         
         Args:
@@ -45,18 +60,17 @@ class AnthropicProvider(LLMProvider):
         for name in tool_names:
             tool = tool_registry.get_tool(name)
             if tool:
-                # Convert to Anthropic Tool format
-                tool_list.append(
-                    Tool(
-                        name=tool.name,
-                        description=tool.description,
-                        input_schema={
-                            "type": "object",
-                            "properties": tool.parameters,
-                            "required": tool.required_params
-                        }
-                    )
-                )
+                # Create a dictionary for the tool schema - compatible with all Anthropic versions
+                tool_dict = {
+                    "name": tool.name,
+                    "description": tool.description,
+                    "input_schema": {
+                        "type": "object",
+                        "properties": tool.parameters,
+                        "required": tool.required_params
+                    }
+                }
+                tool_list.append(tool_dict)
         
         return tool_list
     
@@ -130,13 +144,11 @@ class AnthropicProvider(LLMProvider):
                 "model": self.model,
                 "messages": [{"role": "user", "content": full_prompt}],
                 "temperature": temperature,
+                "max_tokens": max_tokens or 8192,  # Default to 8192 tokens
             }
             
             if system_prompt:
                 kwargs["system"] = system_prompt
-            
-            if max_tokens:
-                kwargs["max_tokens"] = max_tokens
             
             # Add tools if specified
             if tools and len(tools) > 0:
@@ -205,14 +217,11 @@ class AnthropicProvider(LLMProvider):
                 "model": self.model,
                 "messages": [{"role": "user", "content": full_prompt}],
                 "temperature": temperature,
-                "stream": True,
+                "max_tokens": max_tokens or 8192,  # Default to 8192 tokens
             }
             
             if system_prompt:
                 kwargs["system"] = system_prompt
-            
-            if max_tokens:
-                kwargs["max_tokens"] = max_tokens
             
             # Add tools if specified
             if tools and len(tools) > 0:
@@ -220,12 +229,34 @@ class AnthropicProvider(LLMProvider):
                 if tool_schemas:
                     kwargs["tools"] = tool_schemas
             
+            # For AsyncAnthropic we need to use async with
             async with self.client.messages.stream(**kwargs) as stream:
-                async for chunk in stream:
-                    if chunk.type == "content_block_delta" and chunk.delta.type == "text":
-                        yield chunk.delta.text
+                # text_stream may not be available in older versions
+                if hasattr(stream, 'text_stream'):
+                    # In newer versions, text_stream is an iterable
+                    for text in stream.text_stream:
+                        yield text
+                else:
+                    # Fall back to the older streaming approach
+                    async for chunk in stream:
+                        if chunk.type == "content_block_delta" and chunk.delta.type == "text":
+                            yield chunk.delta.text
         except Exception as e:
-            raise Exception(f"Error streaming response from Claude: {str(e)}")
+            # Fall back to non-streaming if there's an error
+            try:
+                print(f"Warning: Streaming failed: {str(e)}")
+                print("Falling back to non-streaming mode")
+                response = await self.generate(
+                    prompt=prompt,
+                    system_prompt=system_prompt,
+                    temperature=temperature,
+                    max_tokens=max_tokens,
+                    context=context,
+                    tools=tools
+                )
+                yield response.text
+            except Exception as inner_e:
+                raise Exception(f"Error generating response from Claude: {str(inner_e)}")
     
     async def test_connection(self) -> bool:
         """Test if the connection to Anthropic API is working.
@@ -257,9 +288,17 @@ def create_anthropic_provider(config: ProviderConfig, api_key: str) -> LLMProvid
         An Anthropic provider instance
         
     Raises:
-        ValueError: If the API key is missing
+        ValueError: If the API key is missing and not running tests
     """
-    if not api_key:
+    # Allow empty API key for testing when environment variable is set
+    is_testing = os.environ.get("RE_CC_TESTING", "").lower() in ("1", "true", "yes")
+    
+    if not api_key and not is_testing:
         raise ValueError("Anthropic API key is required")
+    
+    # If no API key provided but testing, use a dummy key
+    if not api_key and is_testing:
+        print("WARNING: Using dummy API key for testing")
+        api_key = "dummy_key_for_testing"
     
     return AnthropicProvider(config, api_key)

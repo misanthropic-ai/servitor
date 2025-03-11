@@ -16,6 +16,8 @@ Re-CC is a Python reimplementation of the Claude Code CLI. It creates a terminal
 - **Python-Based**: Built with Python 3.9+ using modern async patterns
 - **Package Management**: Uses UV for dependency management
 - **TUI Configuration**: Terminal user interface for managing API keys and provider settings
+- **REPL & API Interfaces**: Programmatic access for embedding in other applications
+- **FastAPI Server**: REST API for remote access and integration with other tools
 
 ## Feature Set
 
@@ -175,6 +177,67 @@ Re-CC supports configuration via environment variables. You can set these in a `
 
 The environment variables take precedence over the settings in the config file, allowing you to override configuration per environment without modifying the config file.
 
+### REPL and API Integration
+
+Re-CC provides several ways to integrate with other applications:
+
+#### Python API
+
+Import and use Re-CC directly in your Python applications:
+
+```python
+import asyncio
+from re_cc import ReCCAPI
+
+async def example():
+    # Simple one-off query
+    response = await ReCCAPI.query("What is Python?")
+    print(response)
+    
+    # Or create a stateful session
+    session = ReCCAPI.create_session()
+    try:
+        # Multiple queries in the same conversation
+        await session.query("What is Python?")
+        await session.query("What are its main features?")
+    finally:
+        session.close()
+
+asyncio.run(example())
+```
+
+#### REPL Mode
+
+Start an interactive REPL for simpler command-line usage:
+
+```bash
+# Start REPL with default provider
+python -m re_cc repl
+
+# Or specify provider and working directory
+python -m re_cc repl --provider openai --directory /path/to/project
+```
+
+#### HTTP API Server
+
+Launch a FastAPI server to provide HTTP access to Re-CC capabilities:
+
+```bash
+# Start the API server
+python -m re_cc server --port 8080
+
+# Then make requests to it
+curl -X POST http://localhost:8080/api/query \
+  -H "Content-Type: application/json" \
+  -d '{"prompt": "What is Python?"}'
+```
+
+The HTTP API provides endpoints for:
+- Single queries: `/api/query`
+- Streaming responses: `/api/query/stream`
+- Session management: `/api/sessions`
+- And other operations like conversation compacting and clearing
+
 ### Configuration Interface
 
 Re-CC includes a built-in TUI (Terminal User Interface) for managing providers and API keys:
@@ -191,6 +254,18 @@ Contributions are welcome! Check the issues page for current tasks or feature re
 
 ## Recent Changes
 
+### 2024-11-04
+- Improved error handling and tool execution
+  - Enhanced parameter validation in Tool registry
+  - Added tool results to ReCCResponse for better debugging
+  - Fixed GrepTool parameter handling for improved compatibility
+  - Made Bash tool properly async to avoid coroutine warnings
+  - Improved error reporting in ToolRegistry with detailed messages
+  - Added automatic type conversion for tool parameters when possible
+  - Implemented tool result tracking in REPL interface
+  - Added fuzzy tool name matching for better user experience
+  - Enhanced the Task tool system with proper error handling
+
 ### 2024-11-03
 - Fixed the CLI entry point for better user experience
   - Improved main application flow to default to the CLI when no command is specified
@@ -202,6 +277,19 @@ Contributions are welcome! Check the issues page for current tasks or feature re
   - Added support for API keys and endpoints from environment variables
   - Implemented debug logging with DEBUG environment variable
   - Created comprehensive documentation for environment variable usage
+- Implemented REPL and API interfaces
+  - Created core ReCC class for stateful interaction with LLM providers
+  - Added ReplCLI class for interactive terminal experience
+  - Implemented ReCCAPI for programmatic integration
+  - Created FastAPI-based HTTP server with RESTful endpoints
+  - Added session management for stateful conversations
+  - Implemented streaming responses for real-time output
+  - Added rich-formatted markdown rendering in REPL output
+  - Created persistent conversation storage across sessions
+  - Fixed provider registration and initialization issues
+  - Added compatibility with different Anthropic client versions
+  - Improved streaming response handling with fallback options
+  - Fixed configuration loading with optional paths
 
 ### 2024-10-07
 - Finalized the command system integration
@@ -273,6 +361,17 @@ Contributions are welcome! Check the issues page for current tasks or feature re
   - Make application run properly when no command is specified
   - Ensure consistent CLI behavior regardless of invocation method
   - Properly handle command-line flags at top level
+- [x] Implement REPL and Server interfaces
+  - Create core ReCC class for programmatic access
+  - Add REPL command for interactive use
+  - Create HTTP API server for remote access
+  - Implement session management
+- [x] Fix tool integration with REPL
+  - Properly register file operation tools
+  - Enable tool execution from LLM responses
+  - Add proper error handling for tool failures
+  - Track tool execution results for debugging
+  - Improve parameter validation and error reporting
 
 ### Medium Priority
 - [x] Implement missing tools
@@ -289,10 +388,15 @@ Contributions are welcome! Check the issues page for current tasks or feature re
   - Implement proper error messages for tool call failures
   - Add rate limiting and retry mechanisms for API calls
   - Create recovery strategies for failed operations
-- [ ] Add comprehensive testing
-  - Unit tests for core components
-  - Integration tests for API interaction
-  - Test command processing pipeline
+- [x] Add comprehensive testing
+  - Created test scripts for core functionality
+  - Implemented tests for edge cases and error handling
+  - Added tool parameter validation tests
+  - Created task management system tests
+  - Developed bash command execution tests
+  - Added test framework for future expansion
+  - [ ] Add unit tests for core components
+  - [ ] Add integration tests for API interaction
 
 ### Low Priority
 - [ ] Set up CI/CD pipeline
