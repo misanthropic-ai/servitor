@@ -26,7 +26,8 @@ Implements all features from the original Claude Code CLI, including:
 - **File Operations**: Editing, viewing, creating files with word-level diffs
 - **Code Search**: Pattern, function, and class finding with language awareness
 - **Command Execution**: Run commands with streaming output
-- **Git Integration**: Repository awareness and context gathering
+- **Git Integration**: Repository operations (status, log, branch, commit, push, pull, diff)
+- **GitHub PR Tools**: PR creation, viewing, commenting, reviewing, and merging
 - **Slash Commands**: Full command system with fuzzy matching
   - File operations: `/edit`, `/view`, `/create`, `/find`
   - Shell access: `/run`, `/shell`
@@ -253,6 +254,17 @@ Re-CC includes a built-in TUI (Terminal User Interface) for managing providers a
 Contributions are welcome! Check the issues page for current tasks or feature requests.
 
 ## Recent Changes
+
+### 2024-11-05
+- Implemented comprehensive Git and GitHub PR tools
+  - Added Git repository operations (status, log, branch, checkout, commit, push, pull, diff)
+  - Added GitHub PR operations (list, create, checkout, view, comments, review, merge)
+  - Fixed "coroutine not awaited" warnings by converting PR handlers to synchronous functions
+  - Implemented consistent command execution pattern for Git operations
+  - Created non-interactive PR merge functionality with auto-confirmation flags
+  - Added proper error handling for Git and GitHub CLI operations
+  - Developed test scripts for local and remote Git operations
+  - Added synchronous command execution for improved reliability
 
 ### 2024-11-04
 - Improved error handling and tool execution

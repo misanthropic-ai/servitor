@@ -154,6 +154,7 @@ The Re-CC application implements a hybrid planning system that combines LLM capa
   - Created mcp.py with MCPList, MCPAdd, MCPRemove, MCPExecute tools
   - Created task.py with CreateTask, ListTasks, TaskStatus, CompleteTask, CancelTask tools
   - Created agent.py with DispatchAgent tool
+  - Created git_tools.py with comprehensive Git and GitHub PR tools
 - [x] Implemented the Task system for multi-step operations
   - Complete task state management with status tracking
   - Support for subtasks and hierarchical task organization
@@ -182,6 +183,13 @@ The Re-CC application implements a hybrid planning system that combines LLM capa
   - Implemented Typer callback with invoke_without_command to handle top-level options
   - Improved command-line argument handling for version and config flags
   - Ensured consistent user experience regardless of how the application is invoked
+- [x] Implemented comprehensive Git and GitHub PR tools
+  - Added Git repository operations (status, log, branch, checkout, commit, push, pull, diff)
+  - Added GitHub PR operations (list, create, checkout, view, comments, review, merge)
+  - Implemented synchronous command execution for consistent behavior
+  - Added proper error handling for Git operations and validation of CLI tools
+  - Created non-interactive PR merge functionality with auto-confirmation
+  - Added comprehensive test suite for local and remote Git operations
 
 ### Currently Working On
 - [x] Implementing REPL and API interfaces
@@ -211,14 +219,22 @@ The Re-CC application implements a hybrid planning system that combines LLM capa
 - [x] Tool calls from LLMs now working for file creation
 - [x] Bash tool execution needed proper async handling
 - [x] Task tool system needed proper integration with the agent
+- [x] Tool results now stored in response object for better error handling and debugging
+- [x] Improved validation for tool parameters to prevent runtime errors
+- [x] Better error reporting for tool execution failures
+- [x] GrepTool parameter handling fixed (especially include parameter)
+- [x] Implemented comprehensive Git and GitHub PR tools
+- [x] Fixed "coroutine not awaited" warnings in PR handlers by converting to synchronous functions
+- [x] Resolved Git log formatting issues with properly quoted format strings
+- [x] Implemented non-interactive PR merge with auto-confirmation flags
+- [x] Created a consistent command execution pattern for all Git operations
+- [x] Added proper error handling and result validation for Git and GitHub CLI operations
 
 ### Remaining Issues
 - [ ] REPL input via stdin piping not working correctly
-- [ ] Some tools have incorrect parameter handling causing execution errors (especially GrepTool include parameter)
 - [ ] Need proper command response handling in REPL for slash commands
-- [ ] Tool results should be stored in response object for better error handling and debugging
-- [ ] Improved validation for tool parameters needed to prevent runtime errors
-- [ ] Better error reporting for tool execution failures
+- [ ] Improve test coverage for all tools
+- [ ] Add more comprehensive documentation for tool usage
 
 Remember to respect user data privacy and follow security best practices when handling API keys.
 
